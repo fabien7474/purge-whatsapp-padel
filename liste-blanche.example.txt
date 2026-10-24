@@ -1,0 +1,5 @@
+# Numéros à toujours garder dans le groupe, même s'ils ne sont pas adhérents
+# (enseignants, salariés, partenaires...). Un numéro par ligne, n'importe quel format.
+# Tout ce qui suit un # est un commentaire.
+
+# 06 12 34 56 78   # exemple : enseignant padel

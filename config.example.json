@@ -1,0 +1,19 @@
+{
+  "adoc": {
+    "url": "https://adoc.app.fft.fr/adoc/",
+    "colonnes": {
+      "nom": null,
+      "prenom": null,
+      "telephones": null
+    }
+  },
+  "whatsapp": {
+    "groupe": "Padel Annecy Tennis"
+  },
+  "retrait": {
+    "parLot": 5,
+    "pauseMinSecondes": 45,
+    "pauseMaxSecondes": 120,
+    "maxParExecution": 40
+  }
+}

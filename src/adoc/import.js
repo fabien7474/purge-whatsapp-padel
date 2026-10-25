@@ -35,7 +35,7 @@ if (path.resolve(source) !== path.resolve(copie)) fs.copyFileSync(source, copie)
 writeJson(PATHS.adherents, { date: today(), source: path.relative(ROOT, copie), ...parsed });
 
 const sansTel = parsed.adherents.filter((a) => a.telephones.length === 0).length;
-console.log(`Export lu : ${source}`);
+console.log(`Export lu : ${source} (feuille « ${parsed.feuille} »)`);
 console.log(`  Colonnes de l'export : ${parsed.colonnes.join(' | ')}`);
 console.log(`  Utilisées : nom = « ${parsed.colonnesUtilisees.nom} », prénom = « ${parsed.colonnesUtilisees.prenom} »`);
 console.log(`  Téléphones : ${parsed.colonnesUtilisees.telephones.map((c) => `« ${c} »`).join(', ')}`);

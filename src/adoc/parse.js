@@ -26,16 +26,30 @@ function findHeaderRow(rows) {
  */
 export function parseAdocExport(buffer, overrides = {}) {
   const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false });
-  const sheetName = wb.SheetNames[0];
-  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '', raw: false });
 
-  const headerIndex = findHeaderRow(rows);
-  if (headerIndex === -1) {
+  // L'export Adoc contient plusieurs feuilles (« Simple », « Détaillé », « Critères de recherche ») :
+  // seule la feuille détaillée contient les coordonnées. On prend celle qui a le plus de colonnes téléphone.
+  const sheets = wb.SheetNames.map((name) => {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '', raw: false });
+    const headerIndex = findHeaderRow(rows);
+    const header = headerIndex === -1 ? [] : rows[headerIndex].map(clean);
+    const wanted = overrides.telephones?.length
+      ? header.filter((h) => overrides.telephones.some((t) => t.toLowerCase() === h.toLowerCase())).length
+      : header.filter((h) => RE_TEL.test(h) && !RE_PAS_TEL.test(h)).length;
+    return { name, rows, headerIndex, header, wanted };
+  });
+  const usable = sheets.filter((s) => s.headerIndex !== -1);
+  if (!usable.length) {
+    throw new Error("Impossible de trouver la ligne d'en-tête (colonnes « Nom » et « Prénom ») dans l'export Adoc.");
+  }
+  const best = usable.reduce((a, b) => (b.wanted > a.wanted ? b : a));
+  if (!best.wanted) {
+    const detail = usable.map((s) => `  Feuille « ${s.name} » : ${s.header.filter(Boolean).join(' | ')}`).join('\n');
     throw new Error(
-      "Impossible de trouver la ligne d'en-tête (colonnes « Nom » et « Prénom ») dans l'export Adoc.",
+      `Aucune colonne de téléphone reconnue. Indiquez-les dans config.json (adoc.colonnes.telephones).\n${detail}`,
     );
   }
-  const header = rows[headerIndex].map(clean);
+  const { name: sheetName, rows, headerIndex, header } = best;
 
   const col = (name) => {
     const i = header.findIndex((h) => h.toLowerCase() === String(name).toLowerCase());

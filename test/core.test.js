@@ -32,12 +32,22 @@ test('noms : prénom et nom requis', () => {
   assert.ok(!nameMatches('', 'BALAS', 'Emilie'));
 });
 
-function fakeExport(rows) {
-  const ws = XLSX.utils.aoa_to_sheet(rows);
+function fakeExport(rows, before = []) {
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Adherents');
+  for (const [name, r] of before) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(r), name);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Adherents');
   return XLSX.write(wb, { type: 'buffer', bookType: 'biff8' });
 }
+
+test('lecture : prend la feuille « Détaillé » quand la première n\'a pas de téléphone', () => {
+  const buf = fakeExport(
+    [['Famille', 'Nom', 'Prénom', 'Téléphone Portable', '2eme Téléphone portable'], ['', 'DUPONT', 'Jean', '+33612345678', '0041791234567']],
+    [['Simple', [['ANNECY TENNIS'], [], [], ['Famille', 'Nom', 'Prénom', 'Sexe', 'Licence', 'N° club de rattachement de la licence'], ['', 'DUPONT', 'Jean', 'H', '1', '12 74 0001']]]],
+  );
+  const r = parseAdocExport(buf);
+  assert.equal(r.feuille, 'Adherents');
+  assert.deepEqual(r.adherents[0].telephones.sort(), ['33612345678', '41791234567']);
+});
 
 test('lecture d\'un export Adoc (.xls) avec plusieurs colonnes téléphone', () => {
   const buf = fakeExport([

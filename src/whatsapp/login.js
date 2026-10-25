@@ -1,5 +1,5 @@
 import { loadConfig } from '../lib/config.js';
-import { listGroups, matchGroups, startWhatsApp } from './client.js';
+import { findGroup, listGroups, matchGroups, startWhatsApp } from './client.js';
 
 const config = loadConfig();
 const wanted = config.whatsapp.groupe;
@@ -10,16 +10,23 @@ try {
   console.log(`\n✅ Connecté en tant que ${client.info.pushname} (+${client.info.wid.user}).`);
 
   const groups = await listGroups(client);
-  const found = /@g\.us$/.test(wanted) ? groups.filter((g) => g.id._serialized === wanted) : matchGroups(groups, wanted);
+  const candidates = groups.filter((g) => !g.community);
+  const found = /@g\.us$/.test(wanted)
+    ? candidates.filter((g) => g.id._serialized === wanted)
+    : matchGroups(candidates, wanted);
 
   console.log(`\nGroupes visibles (${groups.length}) :`);
-  for (const g of groups.sort((a, b) => (b.participants?.length ?? 0) - (a.participants?.length ?? 0))) {
+  const size = (g) => (typeof g.participants.length === 'number' ? g.participants.length : 0);
+  for (const g of groups.sort((a, b) => size(b) - size(a))) {
+    const kind = g.community ? ' [communauté]' : '';
     const mark = found.includes(g) ? '   ← groupe configuré' : '';
-    console.log(`  - ${g.name}  (${g.participants?.length ?? '?'} membres, id ${g.id._serialized})${mark}`);
+    console.log(`  - ${g.name}${kind}  (${g.participants.length} membres, id ${g.id._serialized})${mark}`);
   }
 
   if (found.length === 1) {
-    console.log(`\n✅ Groupe trouvé : « ${found[0].name} » (${found[0].participants?.length ?? '?'} membres).`);
+    // Vérifie que le groupe se charge complètement, membres compris.
+    const group = await findGroup(client, found[0].id._serialized);
+    console.log(`\n✅ Groupe trouvé : « ${group.name} » (${group.participants.length} membres).`);
   } else if (found.length > 1) {
     console.log(`\n⚠️  Plusieurs groupes correspondent à « ${wanted} ». Mettez l'identifiant (…@g.us) du bon groupe dans config.json › whatsapp.groupe.`);
   } else {

@@ -67,7 +67,7 @@ async function main(client) {
     await sleep(5000);
 
     // Vérification : on relit le groupe et on contrôle que chacun est bien parti.
-    group = await client.getChatById(group.id._serialized);
+    group = await findGroup(client, group.id._serialized);
     const encore = new Set(group.participants.map((p) => p.id._serialized));
     for (const r of lot) {
       if (encore.has(r.id)) {

@@ -36,26 +36,110 @@ export async function startWhatsApp({ allowQr = true } = {}) {
   return client;
 }
 
-/** Liste des groupes du compte (y compris ceux d'une communauté). */
+/**
+ * Liste légère des groupes du compte (y compris ceux d'une communauté).
+ *
+ * On n'utilise pas client.getChats() : elle charge toutes les conversations d'un coup et échoue
+ * entièrement (erreur « r » ou « t ») dès qu'une seule pose problème, ce qui arrive avec certaines
+ * communautés. Ici chaque conversation est lue séparément et celles en erreur sont ignorées.
+ */
 export async function listGroups(client) {
-  let chats;
-  try {
-    chats = await client.getChats();
-  } catch (e) {
-    throw new Error(
-      `WhatsApp est connecté mais la liste des conversations n'a pas pu être lue : ${e?.message ?? e}\n` +
-        '→ Mettez à jour la bibliothèque (npm update whatsapp-web.js) et réessayez. Sinon, envoyez ce message.',
-    );
-  }
-  return chats.filter((c) => c.isGroup);
+  const { groups, errors } = await client.pupPage.evaluate(() => {
+    const groups = [];
+    const errors = [];
+    for (const chat of window.require('WAWebCollections').Chat.getModelsArray()) {
+      try {
+        const gm = chat.groupMetadata;
+        if (!gm) continue;
+        groups.push({
+          id: chat.id._serialized,
+          name: chat.formattedTitle || chat.name || gm.subject || '',
+          size: gm.participants?.getModelsArray?.().length || gm.participants?.length || gm.size || null,
+          community: Boolean(gm.isParentGroup),
+        });
+      } catch (e) {
+        errors.push(String(e?.message ?? e));
+      }
+    }
+    return { groups, errors };
+  });
+  if (errors.length && process.env.DEBUG) console.error(`(${errors.length} conversation(s) ignorée(s) : ${errors.join(', ')})`);
+  return groups.map((g) => ({
+    name: g.name,
+    id: { _serialized: g.id },
+    participants: { length: g.size ?? '?' },
+    community: g.community,
+  }));
+}
+
+/**
+ * Charge un groupe (nom et membres) à partir de son identifiant « …@g.us ».
+ * Lecture directe dans WhatsApp Web, sans client.getChatById() qui peut échouer de la même façon
+ * que getChats(). Renvoie un objet avec name, id, participants et removeParticipants().
+ */
+async function loadGroup(client, id) {
+  const data = await client.pupPage.evaluate(async (id) => {
+    const { Chat, GroupMetadata, WAWebGroupMetadataCollection } = window.require('WAWebCollections');
+    const wid = window.require('WAWebWidFactory').createWid(id);
+    const chat = Chat.get(wid);
+    if (!chat?.groupMetadata) return null;
+    try {
+      await (GroupMetadata || WAWebGroupMetadataCollection).update(wid); // liste des membres à jour
+    } catch {
+      /* on garde la liste déjà connue */
+    }
+    const { toPn } = window.require('WAWebLidMigrationUtils');
+    const participants = chat.groupMetadata.participants.getModelsArray().map((p) => ({
+      id: (toPn(p.id) ?? p.id)._serialized,
+      isAdmin: Boolean(p.isAdmin),
+      isSuperAdmin: Boolean(p.isSuperAdmin),
+    }));
+    return { name: chat.formattedTitle || chat.groupMetadata.subject || '', participants };
+  }, id);
+
+  if (!data) throw new Error(`Le groupe ${id} n'est pas accessible depuis ce compte.`);
+  return {
+    name: data.name,
+    id: { _serialized: id },
+    participants: data.participants.map((p) => ({ ...p, id: { _serialized: p.id } })),
+    removeParticipants: (ids) => removeFromGroup(client, id, ids),
+  };
+}
+
+/** Retire des membres du groupe (même mécanisme que whatsapp-web.js GroupChat.removeParticipants). */
+async function removeFromGroup(client, groupId, participantIds) {
+  return client.pupPage.evaluate(
+    async (groupId, participantIds) => {
+      const wid = window.require('WAWebWidFactory').createWid(groupId);
+      const chat = window.require('WAWebCollections').Chat.get(wid);
+      const participants = (
+        await Promise.all(
+          participantIds.map(async (p) => {
+            const { lid, phone } = await window.WWebJS.enforceLidAndPnRetrieval(p);
+            return (
+              chat.groupMetadata.participants.get(lid?._serialized) ||
+              chat.groupMetadata.participants.get(phone?._serialized)
+            );
+          }),
+        )
+      ).filter(Boolean);
+      if (participants.length) {
+        await window.require('WAWebModifyParticipantsGroupAction').removeParticipants(chat, participants);
+      }
+      return { status: 200, count: participants.length };
+    },
+    groupId,
+    participantIds,
+  );
 }
 
 /** Retrouve le groupe par nom (config.whatsapp.groupe) ou par identifiant « …@g.us ». */
 export async function findGroup(client, nameOrId) {
-  if (/@g\.us$/.test(nameOrId)) return client.getChatById(nameOrId);
-  const groups = await listGroups(client);
+  if (/@g\.us$/.test(nameOrId)) return loadGroup(client, nameOrId);
+  // Une communauté elle-même n'est pas un groupe de discussion : on ne la propose pas.
+  const groups = (await listGroups(client)).filter((g) => !g.community);
   const matches = matchGroups(groups, nameOrId);
-  if (matches.length === 1) return matches[0];
+  if (matches.length === 1) return loadGroup(client, matches[0].id._serialized);
   const list = groups
     .map((g) => `  - ${g.name}  (${g.participants?.length ?? '?'} membres, id ${g.id._serialized})`)
     .join('\n');

@@ -1,7 +1,7 @@
 import readline from 'node:readline/promises';
 import { PATHS, loadConfig, readNumberList } from '../lib/config.js';
 import { formatKey } from '../lib/phone.js';
-import { findGroup, isMeAdmin, readMembers, startWhatsApp } from './client.js';
+import { findGroup, isMeAdmin, readMembers, startWhatsApp, closeWhatsApp } from './client.js';
 import { appendJournal, planRemoval, readJournal } from './plan.js';
 
 const config = loadConfig();
@@ -95,6 +95,6 @@ const client = await startWhatsApp({ allowQr: false });
 try {
   await main(client);
 } finally {
-  await client.destroy();
+  await closeWhatsApp(client);
 }
 process.exit(0);

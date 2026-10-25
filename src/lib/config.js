@@ -3,11 +3,22 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Messages d'erreur lisibles plutôt qu'une pile d'appels (DEBUG=1 pour voir le détail).
-process.on('uncaughtException', (e) => {
-  console.error(`\n❌ ${e?.message ?? e}`);
+const onFatal = (e) => {
+  const msg = String(e?.message ?? e);
+  // Pendant la fermeture de WhatsApp, des requêtes encore en cours échouent (« Target closed ») : sans importance.
+  if (globalThis.__waClosing && /target closed|session closed|protocol error|detached|browser has disconnected/i.test(msg)) {
+    if (process.env.DEBUG) console.error('(ignoré pendant la fermeture)', msg);
+    return;
+  }
+  console.error(`\n❌ ${msg}`);
+  if (/target closed|session closed|browser has disconnected/i.test(msg)) {
+    console.error('   La connexion à WhatsApp Web s\'est interrompue. Relancez la commande : elle reprend où elle s\'était arrêtée.');
+  }
   if (process.env.DEBUG) console.error(e);
   process.exit(1);
-});
+};
+process.on('uncaughtException', onFatal);
+process.on('unhandledRejection', onFatal);
 
 export const ROOT =path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 

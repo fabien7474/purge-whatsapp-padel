@@ -1,5 +1,5 @@
 import { loadConfig } from '../lib/config.js';
-import { findGroup, listGroups, matchGroups, startWhatsApp } from './client.js';
+import { findGroup, listGroups, matchGroups, startWhatsApp, closeWhatsApp } from './client.js';
 
 const config = loadConfig();
 const wanted = config.whatsapp.groupe;
@@ -33,6 +33,6 @@ try {
     console.log(`\n⚠️  Aucun groupe ne correspond à « ${wanted} ». Copiez le nom exact (ou l'identifiant …@g.us) depuis la liste ci-dessus dans config.json › whatsapp.groupe.`);
   }
 } finally {
-  await client.destroy();
+  await closeWhatsApp(client);
 }
 process.exit(0);

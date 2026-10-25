@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { PATHS, ROOT, loadConfig, today, writeJson } from '../lib/config.js';
-import { findGroup, readMembers, startWhatsApp } from './client.js';
+import { findGroup, readMembers, startWhatsApp, closeWhatsApp } from './client.js';
 
 const config = loadConfig();
 
@@ -23,6 +23,6 @@ try {
     `✅ ${membres.length} membres lus, dont ${membres.filter((m) => m.admin).length} admins et ${sansNumero} sans numéro visible.`,
   );
 } finally {
-  await client.destroy();
+  await closeWhatsApp(client);
 }
 process.exit(0);

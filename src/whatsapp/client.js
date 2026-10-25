@@ -133,6 +133,26 @@ async function removeFromGroup(client, groupId, participantIds) {
   );
 }
 
+/**
+ * Ferme WhatsApp proprement : on signale la fermeture (les erreurs « Target closed » qui suivent
+ * sont ignorées), puis on attend que Chrome soit vraiment arrêté avant de quitter. Sinon, sous Windows,
+ * le système essaie de tuer un Chrome déjà en train de se fermer (« could not be terminated »).
+ */
+export async function closeWhatsApp(client) {
+  globalThis.__waClosing = true;
+  const proc = client.pupBrowser?.process?.();
+  try {
+    await client.destroy();
+  } catch {
+    /* déjà fermé */
+  }
+  if (proc && proc.exitCode === null && proc.signalCode === null) {
+    await Promise.race([new Promise((r) => proc.once('exit', r)), new Promise((r) => setTimeout(r, 5000))]);
+  }
+  // Une vraie erreur survenue avant la fermeture doit encore s'afficher.
+  globalThis.__waClosing = false;
+}
+
 /** Retrouve le groupe par nom (config.whatsapp.groupe) ou par identifiant « …@g.us ». */
 export async function findGroup(client, nameOrId) {
   if (/@g\.us$/.test(nameOrId)) return loadGroup(client, nameOrId);

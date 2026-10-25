@@ -3,8 +3,7 @@ node_modules/
 # Données personnelles des adhérents et des membres du groupe : ne jamais les committer
 data/
 
-# Sessions de connexion (Adoc et WhatsApp)
-.profiles/
+# Session de connexion WhatsApp
 .wwebjs_auth/
 .wwebjs_cache/
 

@@ -1,8 +1,5 @@
 {
   "adoc": {
-    "url": "https://adoc.app.fft.fr/adoc/",
-    "navigateur": null,
-    "portDebug": 9333,
     "colonnes": {
       "nom": null,
       "prenom": null,

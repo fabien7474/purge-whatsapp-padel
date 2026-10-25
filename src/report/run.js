@@ -5,7 +5,7 @@ import { formatKey } from '../lib/phone.js';
 import { STATUTS, matchMembers, summarize } from './match.js';
 import { renderHtml } from './html.js';
 
-const adoc = readJson(PATHS.adherents, 'Lancez `npm run adoc:export` d\'abord.');
+const adoc = readJson(PATHS.adherents, 'Lancez `npm run adoc:importer` d\'abord.');
 const wa = readJson(PATHS.membres, 'Lancez `npm run wa:membres` d\'abord.');
 
 const lignes = matchMembers({

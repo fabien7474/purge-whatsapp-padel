@@ -14,6 +14,16 @@ export function readJournal(file) {
     });
 }
 
+/** Nombre de retraits réussis dans les dernières 24 h, et heure à laquelle le plus ancien sortira de cette fenêtre. */
+export function recentRemovals(journal, now = Date.now()) {
+  const dates = journal
+    .filter((j) => j.statut === 'retire')
+    .map((j) => Date.parse(j.date))
+    .filter((d) => now - d < 24 * 3600 * 1000)
+    .sort((a, b) => a - b);
+  return { count: dates.length, libereA: dates.length ? new Date(dates[0] + 24 * 3600 * 1000) : null };
+}
+
 export function appendJournal(file, numero, statut, detail = '') {
   fs.appendFileSync(file, `${new Date().toISOString()}\t${numero}\t${statut}\t${detail}\n`, 'utf8');
 }

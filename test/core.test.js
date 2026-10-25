@@ -129,3 +129,17 @@ test('groupe WhatsApp : nom tolérant (emoji, accents, majuscules)', async () =>
   assert.deepEqual(matchGroups(groups, 'Tennis Loisir').map((g) => g.name), ['Tennis loisir']);
   assert.deepEqual(matchGroups(groups, 'squash'), []);
 });
+
+test('plafond de 24 h calculé depuis le journal', async () => {
+  const { recentRemovals } = await import('../src/whatsapp/plan.js');
+  const now = Date.parse('2026-10-26T12:00:00Z');
+  const journal = [
+    { date: '2026-10-25T10:00:00Z', statut: 'retire' }, // il y a 26 h : ne compte plus
+    { date: '2026-10-25T15:00:00Z', statut: 'retire' },
+    { date: '2026-10-26T09:00:00Z', statut: 'retire' },
+    { date: '2026-10-26T09:05:00Z', statut: 'echec' }, // un échec ne compte pas
+  ];
+  const r = recentRemovals(journal, now);
+  assert.equal(r.count, 2);
+  assert.equal(r.libereA.toISOString(), '2026-10-26T15:00:00.000Z');
+});

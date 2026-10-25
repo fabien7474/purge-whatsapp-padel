@@ -14,7 +14,7 @@ Rien n'est retiré automatiquement : le bot prépare une liste, vous la relisez,
 | 3 | `npm run wa:membres` | Se connecte à WhatsApp Web avec le téléphone admin et lit la liste des membres du groupe. |
 | 4 | `npm run rapport` | Rapproche les deux listes et produit le rapport et `data/a-retirer.txt`. |
 | 5 | `npm run wa:retirer` | Simulation : montre ce qui serait fait, sans rien toucher. |
-| 6 | `npm run wa:retirer -- --appliquer` | Retire pour de vrai, par petits lots, après avoir tapé `RETIRER`. |
+| 6 | `npm run wa:retirer -- --appliquer` | Retire pour de vrai, une personne à la fois et lentement, après avoir tapé `RETIRER`. |
 
 `npm run preparer` enchaîne les étapes 3 et 4.
 
@@ -67,14 +67,25 @@ Scannez le QR code avec le téléphone **admin du groupe** (WhatsApp › Réglag
 5. Ouvrez `data/rapports/rapport-AAAA-MM-JJ.html` dans votre navigateur. Traitez les **À vérifier** : ajoutez à `data/a-retirer.txt` ceux à retirer, ou à `liste-blanche.txt` ceux à garder.
 6. Relisez `data/a-retirer.txt` et supprimez toute ligne de quelqu'un qui doit rester.
 7. `npm run wa:retirer` (simulation), puis `npm run wa:retirer -- --appliquer`.
-8. Le retrait s'arrête après 40 personnes par exécution : relancez la même commande le lendemain, il reprend où il s'était arrêté (journal `data/retraits.log`).
+8. Une séance dure environ 20 minutes et retire au plus 12 personnes ; au plus 15 par 24 h, même si vous relancez la commande. Relancez-la chaque jour : elle reprend où elle s'était arrêtée (journal `data/retraits.log`). Comptez une semaine environ pour 100 personnes.
 9. Une fois terminé : `npm run nettoyer` pour supprimer l'export, les listes et les rapports. Pensez aussi à supprimer le fichier `export.xls` de votre dossier Téléchargements.
 
-Réglages du rythme dans `config.json` › `retrait` : taille des lots, pauses, plafond par exécution.
+### Rythme de retrait
+
+Volontairement lent pour ne pas attirer l'attention de WhatsApp. Réglages dans `config.json` › `retrait` :
+
+| Réglage | Valeur | Rôle |
+|---|---|---|
+| `parLot` | 1 | personnes retirées à la fois |
+| `pauseMinSecondes` / `pauseMaxSecondes` | 60 / 150 | pause aléatoire entre deux retraits |
+| `maxParExecution` | 12 | retraits par séance (≈ 20 min) |
+| `maxPar24h` | 15 | retraits sur 24 heures glissantes, toutes séances confondues |
+
+Si un retrait n'aboutit pas, la séance s'arrête aussitôt : vérifiez le groupe sur votre téléphone et attendez le lendemain.
 
 ## Risques et précautions
 
-- **WhatsApp** : il n'existe pas d'API officielle pour gérer un groupe de cette taille. Le bot passe par WhatsApp Web (bibliothèque [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js)), ce que les conditions de WhatsApp n'autorisent pas. Le risque est une suspension du numéro utilisé, surtout en cas de retraits massifs. D'où les précautions : numéro dédié, petits lots, pauses aléatoires, plafond quotidien. La simple lecture des membres est peu risquée.
+- **WhatsApp** : il n'existe pas d'API officielle pour gérer un groupe de cette taille. Le bot passe par WhatsApp Web (bibliothèque [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js)), ce que les conditions de WhatsApp n'autorisent pas. Le risque est une suspension du numéro utilisé, surtout en cas de retraits massifs. D'où les précautions : numéro dédié, une personne à la fois, pauses aléatoires, plafond quotidien, arrêt au premier échec. La simple lecture des membres est peu risquée.
 - **Données personnelles** : tout reste sur l'ordinateur. Le dossier `data/` et la session WhatsApp sont exclus de Git (`.gitignore`). Ne committez jamais ces fichiers. Adoc rappelle que ces données ne doivent servir qu'à votre mission au club.
 - **Le bot ne retire jamais** : un admin du groupe, son propre compte, un numéro de la liste blanche.
 

@@ -10,9 +10,10 @@
     "groupe": "Padel Annecy Tennis"
   },
   "retrait": {
-    "parLot": 5,
-    "pauseMinSecondes": 45,
-    "pauseMaxSecondes": 120,
-    "maxParExecution": 40
+    "parLot": 1,
+    "pauseMinSecondes": 60,
+    "pauseMaxSecondes": 150,
+    "maxParExecution": 12,
+    "maxPar24h": 15
   }
 }

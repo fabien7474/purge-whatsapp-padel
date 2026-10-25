@@ -2,11 +2,11 @@ import readline from 'node:readline/promises';
 import { PATHS, loadConfig, readNumberList } from '../lib/config.js';
 import { formatKey } from '../lib/phone.js';
 import { findGroup, isMeAdmin, readMembers, startWhatsApp, closeWhatsApp } from './client.js';
-import { appendJournal, planRemoval, readJournal } from './plan.js';
+import { appendJournal, planRemoval, readJournal, recentRemovals } from './plan.js';
 
 const config = loadConfig();
 const appliquer = process.argv.includes('--appliquer');
-const { parLot, pauseMinSecondes, pauseMaxSecondes, maxParExecution } = config.retrait;
+const { parLot, pauseMinSecondes, pauseMaxSecondes, maxParExecution, maxPar24h } = config.retrait;
 
 const lignes = readNumberList(PATHS.aRetirer);
 if (!lignes.length) {
@@ -24,26 +24,37 @@ async function main(client) {
     throw new Error(`Le compte connecté n'est pas admin du groupe « ${group.name} » : impossible de retirer des membres.`);
   }
 
+  const journal = readJournal(PATHS.journalRetraits);
+  const recent = recentRemovals(journal);
+  const quota = Math.max(0, Math.min(maxParExecution, maxPar24h - recent.count));
+
   const membres = await readMembers(client, group);
   const plan = planRemoval({
     lignes,
     membres,
-    journal: readJournal(PATHS.journalRetraits),
+    journal,
     listeBlanche: readNumberList(PATHS.listeBlanche),
-    max: maxParExecution,
+    max: quota,
   });
 
   console.log(`\nGroupe « ${group.name} » : ${membres.length} membres.`);
   console.log(`  ${plan.aRetirer.length} à retirer maintenant`);
-  if (plan.reportes.length) console.log(`  ${plan.reportes.length} reportés à la prochaine exécution (max ${maxParExecution} par exécution)`);
+  if (plan.reportes.length) {
+    console.log(`  ${plan.reportes.length} reportés (max ${maxParExecution} par exécution, ${maxPar24h} par 24 h ; ${recent.count} déjà retirés ces dernières 24 h)`);
+  }
+  if (quota === 0 && plan.reportes.length) {
+    const h = recent.libereA?.toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' });
+    console.log(`\n⏸️  Limite de ${maxPar24h} retraits par 24 h atteinte. Prochain retrait possible : ${h}.`);
+  }
   if (plan.dejaPartis.length) console.log(`  ${plan.dejaPartis.length} déjà absents du groupe`);
   if (plan.dejaFaits.length) console.log(`  ${plan.dejaFaits.length} déjà retirés lors d'une exécution précédente`);
   for (const p of plan.proteges) console.log(`  ⚠️  ${formatKey(p.numero)} ignoré : ${p.raison}`);
 
   if (!plan.aRetirer.length) return;
 
-  const minutes = Math.round(((plan.aRetirer.length / parLot) * (pauseMinSecondes + pauseMaxSecondes)) / 2 / 60);
-  console.log(`\nPar lots de ${parLot}, avec ${pauseMinSecondes} à ${pauseMaxSecondes} s de pause : environ ${minutes} min.`);
+  const minutes = Math.round(((plan.aRetirer.length / parLot) * ((pauseMinSecondes + pauseMaxSecondes) / 2 + 5)) / 60);
+  const rythme = parLot === 1 ? 'Une personne à la fois' : `Par lots de ${parLot}`;
+  console.log(`\n${rythme}, avec ${pauseMinSecondes} à ${pauseMaxSecondes} s de pause : environ ${minutes} min.`);
 
   if (!appliquer) {
     console.log('\nSIMULATION : personne n\'a été retiré. Premiers numéros concernés :');
@@ -69,15 +80,23 @@ async function main(client) {
     // Vérification : on relit le groupe et on contrôle que chacun est bien parti.
     group = await findGroup(client, group.id._serialized);
     const encore = new Set(group.participants.map((p) => p.id._serialized));
+    let echec = false;
     for (const r of lot) {
       if (encore.has(r.id)) {
         appendJournal(PATHS.journalRetraits, r.numero, 'echec', r.nom);
         console.log(`  ❌ ${formatKey(r.numero)} toujours présent`);
+        echec = true;
       } else {
         appendJournal(PATHS.journalRetraits, r.numero, 'retire', r.nom);
         retires += 1;
         console.log(`  ✅ ${formatKey(r.numero)} retiré`);
       }
+    }
+
+    if (echec) {
+      // Un retrait refusé peut signaler une restriction de WhatsApp : on n'insiste pas.
+      console.log('\n⛔ Un retrait n\'a pas abouti : arrêt par prudence. Vérifiez le groupe sur votre téléphone avant de relancer, idéalement le lendemain.');
+      break;
     }
 
     if (i + parLot < plan.aRetirer.length) {
@@ -88,7 +107,8 @@ async function main(client) {
   }
 
   console.log(`\n✅ ${retires} personne(s) retirée(s). Journal : data/retraits.log`);
-  if (plan.reportes.length) console.log(`Il en reste ${plan.reportes.length} : relancez la commande plus tard (idéalement le lendemain).`);
+  const reste = plan.aRetirer.length - retires + plan.reportes.length;
+  if (reste > 0) console.log(`Il en reste ${reste} : relancez la commande demain.`);
 }
 
 const client = await startWhatsApp({ allowQr: false });

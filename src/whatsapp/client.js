@@ -2,6 +2,9 @@ import qrcode from 'qrcode-terminal';
 import pkg from 'whatsapp-web.js';
 import { PATHS } from '../lib/config.js';
 import { waKey } from '../lib/phone.js';
+import { matchGroups } from './groups.js';
+
+export { matchGroups };
 
 const { Client, LocalAuth } = pkg;
 
@@ -33,12 +36,25 @@ export async function startWhatsApp({ allowQr = true } = {}) {
   return client;
 }
 
-/** Retrouve le groupe par nom exact (config.whatsapp.groupe) ou par identifiant « …@g.us ». */
+/** Liste des groupes du compte (y compris ceux d'une communauté). */
+export async function listGroups(client) {
+  let chats;
+  try {
+    chats = await client.getChats();
+  } catch (e) {
+    throw new Error(
+      `WhatsApp est connecté mais la liste des conversations n'a pas pu être lue : ${e?.message ?? e}\n` +
+        '→ Mettez à jour la bibliothèque (npm update whatsapp-web.js) et réessayez. Sinon, envoyez ce message.',
+    );
+  }
+  return chats.filter((c) => c.isGroup);
+}
+
+/** Retrouve le groupe par nom (config.whatsapp.groupe) ou par identifiant « …@g.us ». */
 export async function findGroup(client, nameOrId) {
   if (/@g\.us$/.test(nameOrId)) return client.getChatById(nameOrId);
-  const chats = await client.getChats();
-  const groups = chats.filter((c) => c.isGroup);
-  const matches = groups.filter((g) => g.name === nameOrId);
+  const groups = await listGroups(client);
+  const matches = matchGroups(groups, nameOrId);
   if (matches.length === 1) return matches[0];
   const list = groups
     .map((g) => `  - ${g.name}  (${g.participants?.length ?? '?'} membres, id ${g.id._serialized})`)

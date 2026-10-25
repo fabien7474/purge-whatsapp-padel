@@ -119,3 +119,13 @@ test('plan de retrait : protections, reprise et plafond', () => {
   assert.deepEqual(plan.dejaFaits, ['33600000099']);
   assert.deepEqual(plan.proteges.map((p) => p.raison), ['admin du groupe', 'compte connecté', 'liste blanche']);
 });
+
+test('groupe WhatsApp : nom tolérant (emoji, accents, majuscules)', async () => {
+  const { matchGroups } = await import('../src/whatsapp/groups.js');
+  const groups = [{ name: '🎾 Padel – Annecy Tennis' }, { name: 'Padel Annecy Tennis - Annonces' }, { name: 'Tennis loisir' }];
+  assert.deepEqual(matchGroups(groups, '🎾 Padel – Annecy Tennis').map((g) => g.name), ['🎾 Padel – Annecy Tennis']);
+  assert.deepEqual(matchGroups(groups, 'padel annecy tennis').map((g) => g.name), ['🎾 Padel – Annecy Tennis']);
+  assert.equal(matchGroups(groups, 'padel').length, 2, 'nom partiel ambigu : deux groupes');
+  assert.deepEqual(matchGroups(groups, 'Tennis Loisir').map((g) => g.name), ['Tennis loisir']);
+  assert.deepEqual(matchGroups(groups, 'squash'), []);
+});

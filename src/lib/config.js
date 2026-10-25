@@ -20,7 +20,7 @@ export const PATHS = {
   rapportsDir: path.join(ROOT, 'data', 'rapports'),
   aRetirer: path.join(ROOT, 'data', 'a-retirer.txt'),
   journalRetraits: path.join(ROOT, 'data', 'retraits.log'),
-  adocProfile: path.join(ROOT, '.profiles', 'adoc'),
+  adocChromeProfile: path.join(ROOT, '.profiles', 'adoc-chrome'),
   waAuth: path.join(ROOT, '.wwebjs_auth'),
   config: path.join(ROOT, 'config.json'),
   configExample: path.join(ROOT, 'config.example.json'),

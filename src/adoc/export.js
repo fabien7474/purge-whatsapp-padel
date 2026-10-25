@@ -1,39 +1,52 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PATHS, ROOT, ensureDir, loadConfig, today, writeJson } from '../lib/config.js';
-import { openAdoc, isInsideAdoc } from './browser.js';
+import { attach, closeChrome, launchChrome } from './browser.js';
 import { parseAdocExport } from './parse.js';
 
 const config = loadConfig();
-const base = config.adoc.url;
-const headless = !process.argv.includes('--visible');
+const { url: base, portDebug: port, navigateur } = config.adoc;
 
 ensureDir(PATHS.adocDir);
 const xlsPath = path.join(PATHS.adocDir, `adherents-${today()}.xls`);
 
 console.log('Adoc : export de la liste des adhérents en cours…');
-const context = await openAdoc({ headless });
+const listUrl = `${base}membreListe.do?method=listAdherentsEnCours`;
+const proc = await launchChrome({ url: listUrl, port, browserPath: navigateur });
+
+const { browser, page } = await attach({ port, base });
 try {
-  const page = context.pages()[0] ?? (await context.newPage());
-  await page.goto(`${base}membreListe.do?method=listAdherentsEnCours`);
+  if (!page.url().includes('listAdherentsEnCours')) await page.goto(listUrl);
 
-  if (!isInsideAdoc(page, base)) {
-    throw new Error('Session Adoc expirée ou absente.\n→ Lancez `npm run adoc:connexion` puis recommencez.');
+  const total = await page
+    .locator('text=/\\d[\\d\\s,.]* éléments trouvés/')
+    .first()
+    .textContent({ timeout: 15_000 })
+    .catch(() => null);
+  if (total) console.log(`  Adoc annonce : ${total.trim()}`);
+
+  // Même requête que le bouton « Exporter », faite depuis la page, sans téléchargement.
+  const b64 = await page.evaluate(async () => {
+    const f = document.membreListeForm;
+    if (!f) throw new Error('Formulaire de la liste des adhérents introuvable : la page d\'Adoc a peut-être changé.');
+    const fd = new FormData(f);
+    fd.set('method', 'exportAdherent');
+    const r = await fetch(f.action, { method: 'POST', body: new URLSearchParams(fd), credentials: 'include' });
+    if (!r.ok) throw new Error(`Export Adoc refusé (HTTP ${r.status}).`);
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s);
+  });
+
+  const buf = Buffer.from(b64, 'base64');
+  const magic = buf.subarray(0, 4).toString('hex');
+  if (magic !== 'd0cf11e0' && !magic.startsWith('504b')) {
+    throw new Error('Adoc n\'a pas renvoyé un fichier Excel (session expirée ?). Relancez la commande.');
   }
-
-  const total = (await page.locator('text=/\\d[\\d\\s,.]* éléments trouvés/').first().textContent().catch(() => ''))
-    ?.trim();
-  if (total) console.log(`  Adoc annonce : ${total}`);
-
-  const exportLink = page.locator('a[href*="exportAdherent"]').first();
-  if ((await exportLink.count()) === 0) {
-    throw new Error("Lien « Exporter » introuvable sur la page des adhérents en cours. La page d'Adoc a peut-être changé.");
-  }
-
-  const [download] = await Promise.all([page.waitForEvent('download', { timeout: 120_000 }), exportLink.click()]);
-  await download.saveAs(xlsPath);
+  fs.writeFileSync(xlsPath, buf);
 } finally {
-  await context.close();
+  await closeChrome(browser, proc);
 }
 
 const parsed = parseAdocExport(fs.readFileSync(xlsPath), config.adoc.colonnes);
@@ -41,6 +54,8 @@ writeJson(PATHS.adherents, { date: today(), source: path.relative(ROOT, xlsPath)
 
 const sansTel = parsed.adherents.filter((a) => a.telephones.length === 0).length;
 console.log(`  Fichier : ${path.relative(ROOT, xlsPath)}`);
-console.log(`  Colonnes utilisées : nom = « ${parsed.colonnesUtilisees.nom} », prénom = « ${parsed.colonnesUtilisees.prenom} »`);
-console.log(`  Colonnes téléphone : ${parsed.colonnesUtilisees.telephones.map((c) => `« ${c} »`).join(', ')}`);
+console.log(`  Colonnes de l'export : ${parsed.colonnes.join(' | ')}`);
+console.log(`  Utilisées : nom = « ${parsed.colonnesUtilisees.nom} », prénom = « ${parsed.colonnesUtilisees.prenom} »`);
+console.log(`  Téléphones : ${parsed.colonnesUtilisees.telephones.map((c) => `« ${c} »`).join(', ')}`);
 console.log(`✅ ${parsed.adherents.length} adhérents lus, dont ${sansTel} sans numéro exploitable.`);
+process.exit(0);

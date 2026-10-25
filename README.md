@@ -9,7 +9,7 @@ Rien n'est retiré automatiquement : le bot prépare une liste, vous la relisez,
 
 | Étape | Commande | Ce qui se passe |
 |---|---|---|
-| 1 | `npm run adoc:export` | Ouvre Adoc dans un Chromium invisible, clique sur **Exporter** dans *Adhérents en cours*, lit le fichier Excel et normalise les numéros. |
+| 1 | `npm run adoc:export` | Ouvre Adoc dans votre Chrome (connexion manuelle si la session a expiré), lance l'**Export** des *Adhérents en cours*, lit le fichier Excel et normalise les numéros. |
 | 2 | `npm run wa:membres` | Se connecte à WhatsApp Web avec le téléphone admin et lit la liste des membres du groupe. |
 | 3 | `npm run rapport` | Rapproche les deux listes et produit le rapport + `data/a-retirer.txt`. |
 | 4 | `npm run wa:retirer` | Simulation : montre ce qui serait fait, sans rien toucher. |
@@ -28,13 +28,12 @@ Les portables suisses saisis sans indicatif (`079…`) sont reconnus.
 
 ## Installation (une seule fois)
 
-Prérequis : [Node.js](https://nodejs.org) 20 ou plus, et Git.
+Prérequis : [Node.js](https://nodejs.org) 20 ou plus, Git, et Google Chrome (ou Microsoft Edge).
 
 ```bash
 git clone https://github.com/fabien7474/purge-whatsapp-padel.git
 cd purge-whatsapp-padel
 npm install
-npx playwright install chromium
 cp config.example.json config.json
 cp liste-blanche.example.txt liste-blanche.txt
 ```
@@ -49,7 +48,11 @@ Dans `config.json`, mettez le **nom exact** du groupe dans `whatsapp.groupe`.
 npm run adoc:connexion
 ```
 
-Une fenêtre Chromium s'ouvre : connectez-vous avec votre compte FFT. La session est gardée dans `.profiles/adoc/` (aucun mot de passe n'est stocké dans le projet). Si plus tard l'export répond « session expirée », relancez cette commande.
+Une fenêtre **Chrome** s'ouvre sur Adoc : connectez-vous normalement (identifiant, mot de passe, captcha). Elle se ferme toute seule une fois que vous êtes dans Adoc.
+
+Le site de la FFT bloque les navigateurs pilotés par un robot au moment de la connexion. Le bot ne cherche pas à contourner cette protection : il ouvre votre vrai Chrome, avec un profil dédié (`.profiles/adoc-chrome/`, distinct de votre profil habituel), et ne s'y attache qu'**après** votre connexion pour lancer l'export. Aucun mot de passe n'est stocké dans le projet.
+
+Si la session a expiré, `npm run adoc:export` rouvre simplement la fenêtre et attend que vous vous reconnectiez. Si Chrome n'est pas trouvé automatiquement, indiquez son chemin dans `config.json` › `adoc.navigateur`.
 
 ### Connexion à WhatsApp
 

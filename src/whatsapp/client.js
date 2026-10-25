@@ -182,7 +182,7 @@ export async function myIds(client) {
  * Depuis 2025, WhatsApp masque parfois les numéros derrière un identifiant « @lid » :
  * on demande la correspondance numéro ↔ lid par paquets.
  */
-export async function readMembers(client, group, { withNames = false } = {}) {
+export async function readMembers(client, group) {
   const mine = await myIds(client);
   const ids = group.participants.map((p) => p.id._serialized);
   const mapping = new Map();
@@ -197,29 +197,55 @@ export async function readMembers(client, group, { withNames = false } = {}) {
     res.forEach((r, j) => mapping.set(chunk[j], r ?? {}));
   }
 
-  const membres = [];
-  for (const p of group.participants) {
+  const lookups = group.participants.map((p) => {
     const id = p.id._serialized;
     const { lid, pn } = mapping.get(id) ?? {};
-    let nom = '';
-    if (withNames) {
-      try {
-        const c = await client.getContactById(pn ?? id);
-        nom = c.name || c.pushname || c.shortName || '';
-      } catch {
-        /* contact inconnu : nom vide */
-      }
-    }
-    membres.push({
+    return [pn, id, lid].filter(Boolean);
+  });
+  const infos = await contactInfos(client, lookups);
+
+  return group.participants.map((p, i) => {
+    const id = p.id._serialized;
+    const { lid, pn } = mapping.get(id) ?? {};
+    return {
       id,
       lid: lid ?? (id.endsWith('@lid') ? id : null),
       numero: waKey(pn) ?? waKey(id),
-      nom,
+      nom: infos[i].nom,
+      contact: infos[i].contact, // enregistré dans les contacts du téléphone lié au bot
       admin: Boolean(p.isAdmin || p.isSuperAdmin),
       moi: mine.has(id) || (lid ? mine.has(lid) : false),
+    };
+  });
+}
+
+/**
+ * Nom affiché et « est dans mes contacts » pour chaque membre, lus directement dans WhatsApp Web
+ * (une erreur sur un contact n'empêche pas de lire les autres).
+ * `lookups` : pour chaque membre, ses identifiants possibles (numéro, puis identifiant masqué).
+ */
+async function contactInfos(client, lookups) {
+  return client.pupPage.evaluate((lookups) => {
+    const { Contact } = window.require('WAWebCollections');
+    const { createWid } = window.require('WAWebWidFactory');
+    const { getName, getPushname, getShortName } = window.require('WAWebContactGetters');
+    const { getIsMyContact } = window.require('WAWebFrontendContactGetters');
+    return lookups.map((ids) => {
+      let nom = '';
+      let contact = false;
+      for (const id of ids) {
+        try {
+          const c = Contact.get(createWid(id));
+          if (!c) continue;
+          contact = contact || Boolean(getIsMyContact(c));
+          nom = nom || getName(c) || getPushname(c) || getShortName(c) || '';
+        } catch {
+          /* contact illisible : on passe au suivant */
+        }
+      }
+      return { nom, contact };
     });
-  }
-  return membres;
+  }, lookups);
 }
 
 /** Vrai si le compte connecté est admin du groupe. */

@@ -10,7 +10,7 @@ try {
   const group = await findGroup(client, config.whatsapp.groupe);
   console.log(`  Groupe « ${group.name} » : ${group.participants.length} membres`);
 
-  const membres = await readMembers(client, group, { withNames: true });
+  const membres = await readMembers(client, group);
 
   const file = path.join(PATHS.waDir, `membres-${today()}.json`);
   const payload = { date: today(), groupe: group.name, groupeId: group.id._serialized, membres };

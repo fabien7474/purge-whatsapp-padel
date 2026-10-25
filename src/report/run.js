@@ -25,9 +25,9 @@ const stamp = today();
 // CSV pour Excel (séparateur « ; » et BOM pour les accents)
 const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 const csv = [
-  ['Statut', 'Numéro', 'Nom WhatsApp', 'Admin', 'Adhérent Adoc', 'Raison'].map(csvCell).join(';'),
+  ['Statut', 'Numéro', 'Nom WhatsApp', 'Admin', 'Dans mes contacts', 'Adhérent Adoc', 'Raison'].map(csvCell).join(';'),
   ...lignes.map((l) =>
-    [STATUTS[l.statut], formatKey(l.numero), l.nomWhatsApp, l.admin ? 'oui' : '', l.adherent, l.raison]
+    [STATUTS[l.statut], formatKey(l.numero), l.nomWhatsApp, l.admin ? 'oui' : '', l.contact ? 'oui' : '', l.adherent, l.raison]
       .map(csvCell)
       .join(';'),
   ),
@@ -44,7 +44,8 @@ fs.writeFileSync(
 
 // Liste à valider avant retrait : on garde l'éventuelle version précédente.
 if (fs.existsSync(PATHS.aRetirer)) fs.copyFileSync(PATHS.aRetirer, PATHS.aRetirer.replace(/\.txt$/, '.precedent.txt'));
-const aRetirer = lignes.filter((l) => l.statut === 'a_retirer');
+// Inconnus d'abord, vos contacts à la fin (ils seront aussi retirés en dernier).
+const aRetirer = lignes.filter((l) => l.statut === 'a_retirer').sort((a, b) => Number(a.contact) - Number(b.contact));
 fs.writeFileSync(
   PATHS.aRetirer,
   [
@@ -53,7 +54,7 @@ fs.writeFileSync(
     '# Ajoutez éventuellement des numéros « À vérifier » que vous avez confirmés.',
     '# Ensuite : npm run wa:retirer (simulation), puis npm run wa:retirer -- --appliquer',
     '',
-    ...aRetirer.map((l) => `${formatKey(l.numero).padEnd(20)} # ${l.nomWhatsApp || '(sans nom)'}`),
+    ...aRetirer.map((l) => `${formatKey(l.numero).padEnd(20)} # ${l.nomWhatsApp || '(sans nom)'}${l.contact ? '  · dans vos contacts' : ''}`),
     '',
   ].join('\n'),
   'utf8',

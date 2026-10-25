@@ -81,6 +81,8 @@ Assez lent pour ne pas attirer l'attention de WhatsApp. Réglages dans `config.j
 | `maxParExecution` | 40 | retraits par séance (≈ 50 min) |
 | `maxPar24h` | `null` | plafond facultatif sur 24 heures glissantes, toutes séances confondues (`null` = pas de plafond) |
 
+Les personnes enregistrées dans les **contacts du téléphone lié au bot** sont retirées en dernier : elles sont placées en fin de `data/a-retirer.txt` (marquées « dans vos contacts ») et ne passent qu'une fois tous les inconnus retirés. Cela laisse le temps de prévenir personnellement ceux que vous connaissez.
+
 Si un retrait n'aboutit pas, la séance s'arrête aussitôt : vérifiez le groupe sur votre téléphone et attendez le lendemain.
 
 ## Risques et précautions

@@ -12,7 +12,7 @@ export function renderHtml({ lignes, totaux, groupe, dateAdoc, dateWa, nbAdheren
   const rows = lignes
     .map(
       (l) => `<tr class="${l.statut}"><td><span class="tag ${l.statut}">${esc(STATUTS[l.statut])}</span></td>
-<td class="num">${esc(formatKey(l.numero))}</td><td>${esc(l.nomWhatsApp)}${l.admin ? ' <small>admin</small>' : ''}</td>
+<td class="num">${esc(formatKey(l.numero))}</td><td>${esc(l.nomWhatsApp)}${l.admin ? ' <small>admin</small>' : ''}${l.contact ? ' <small>contact</small>' : ''}</td>
 <td>${esc(l.adherent)}</td><td class="why">${esc(l.raison)}</td></tr>`,
     )
     .join('\n');

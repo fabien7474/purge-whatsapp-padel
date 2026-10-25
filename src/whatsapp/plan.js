@@ -32,6 +32,7 @@ export function appendJournal(file, numero, statut, detail = '') {
  * Prépare le retrait à partir de la liste validée (a-retirer.txt) et de l'état actuel du groupe.
  * Ne retire jamais : un admin, le compte connecté, un numéro de la liste blanche,
  * ni quelqu'un qui n'est plus dans le groupe.
+ * Les personnes enregistrées dans les contacts du téléphone sont retirées en dernier.
  */
 export function planRemoval({ lignes, membres, journal = [], listeBlanche = [], max = Infinity }) {
   const blanche = new Set(listeBlanche.flatMap(phoneKeys));
@@ -41,6 +42,7 @@ export function planRemoval({ lignes, membres, journal = [], listeBlanche = [], 
   const demandes = [...new Set(lignes.flatMap((l) => phoneKeys(l).slice(0, 1)))];
   const plan = { aRetirer: [], dejaPartis: [], proteges: [], dejaFaits: [], reportes: [] };
 
+  const eligibles = [];
   for (const numero of demandes) {
     const m = parNumero.get(numero);
     if (dejaFaits.has(numero) && !m) plan.dejaFaits.push(numero);
@@ -48,8 +50,12 @@ export function planRemoval({ lignes, membres, journal = [], listeBlanche = [], 
     else if (m.moi) plan.proteges.push({ numero, raison: 'compte connecté' });
     else if (m.admin) plan.proteges.push({ numero, raison: 'admin du groupe' });
     else if (blanche.has(numero)) plan.proteges.push({ numero, raison: 'liste blanche' });
-    else if (plan.aRetirer.length >= max) plan.reportes.push(numero);
-    else plan.aRetirer.push({ numero, id: m.id, nom: m.nom });
+    else eligibles.push({ numero, id: m.id, nom: m.nom, contact: Boolean(m.contact) });
   }
+
+  // Inconnus d'abord, contacts du téléphone en dernier (tri stable : l'ordre de la liste est conservé).
+  eligibles.sort((a, b) => Number(a.contact) - Number(b.contact));
+  plan.aRetirer = eligibles.slice(0, max);
+  plan.reportes = eligibles.slice(max).map((e) => e.numero);
   return plan;
 }

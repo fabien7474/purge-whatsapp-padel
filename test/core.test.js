@@ -143,3 +143,15 @@ test('plafond de 24 h calculé depuis le journal', async () => {
   assert.equal(r.count, 2);
   assert.equal(r.libereA.toISOString(), '2026-10-26T15:00:00.000Z');
 });
+
+test('plan de retrait : les contacts du téléphone passent en dernier', () => {
+  const mb = [
+    { id: 'k1', numero: '33600000011', nom: 'Ami', contact: true, admin: false, moi: false },
+    { id: 'u1', numero: '33600000012', nom: 'Inconnu 1', contact: false, admin: false, moi: false },
+    { id: 'k2', numero: '33600000013', nom: 'Ami 2', contact: true, admin: false, moi: false },
+    { id: 'u2', numero: '33600000014', nom: 'Inconnu 2', contact: false, admin: false, moi: false },
+  ];
+  const plan = planRemoval({ lignes: ['0600000011', '0600000012', '0600000013', '0600000014'], membres: mb, max: 3 });
+  assert.deepEqual(plan.aRetirer.map((r) => r.id), ['u1', 'u2', 'k1']);
+  assert.deepEqual(plan.reportes, ['33600000013']);
+});

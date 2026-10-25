@@ -51,6 +51,8 @@ async function main(client) {
   if (plan.dejaPartis.length) console.log(`  ${plan.dejaPartis.length} déjà absents du groupe`);
   if (plan.dejaFaits.length) console.log(`  ${plan.dejaFaits.length} déjà retirés lors d'une exécution précédente`);
   for (const p of plan.proteges) console.log(`  ⚠️  ${formatKey(p.numero)} ignoré : ${p.raison}`);
+  const nbContacts = plan.aRetirer.filter((r) => r.contact).length;
+  if (nbContacts) console.log(`  dont ${nbContacts} de vos contacts, retirés en dernier`);
 
   if (!plan.aRetirer.length) return;
 
@@ -60,7 +62,7 @@ async function main(client) {
 
   if (!appliquer) {
     console.log('\nSIMULATION : personne n\'a été retiré. Premiers numéros concernés :');
-    for (const r of plan.aRetirer.slice(0, 10)) console.log(`  - ${formatKey(r.numero)}  ${r.nom}`);
+    for (const r of plan.aRetirer.slice(0, 10)) console.log(`  - ${formatKey(r.numero)}  ${r.nom}${r.contact ? '  (contact)' : ''}`);
     console.log('\nPour retirer pour de vrai : npm run wa:retirer -- --appliquer');
     return;
   }

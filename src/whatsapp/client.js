@@ -51,11 +51,19 @@ export async function listGroups(client) {
       try {
         const gm = chat.groupMetadata;
         if (!gm) continue;
+        // Type WhatsApp : DEFAULT (groupe simple), COMMUNITY (la communauté elle-même),
+        // LINKED_ANNOUNCEMENT_GROUP (groupe d'annonces de la communauté, où sont tous ses membres),
+        // LINKED_SUBGROUP / LINKED_GENERAL_GROUP (groupes de la communauté).
+        const type = String(gm.groupType ?? '');
+        const parent = gm.parentGroup?._serialized ?? (typeof gm.parentGroup === 'string' ? gm.parentGroup : null);
         groups.push({
           id: chat.id._serialized,
           name: chat.formattedTitle || chat.name || gm.subject || '',
           size: gm.participants?.getModelsArray?.().length || gm.participants?.length || gm.size || null,
-          community: Boolean(gm.isParentGroup),
+          community: type === 'COMMUNITY' || Boolean(gm.isParentGroup),
+          announcement: type === 'LINKED_ANNOUNCEMENT_GROUP' || Boolean(gm.defaultSubgroup || gm.isDefaultSubgroup),
+          parent,
+          type,
         });
       } catch (e) {
         errors.push(String(e?.message ?? e));
@@ -69,6 +77,9 @@ export async function listGroups(client) {
     id: { _serialized: g.id },
     participants: { length: g.size ?? '?' },
     community: g.community,
+    announcement: g.announcement,
+    parent: g.parent,
+    type: g.type,
   }));
 }
 

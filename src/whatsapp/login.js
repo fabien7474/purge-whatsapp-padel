@@ -19,8 +19,16 @@ try {
 
   console.log(`\nGroupes visibles (${groups.length}) :`);
   const size = (g) => (typeof g.participants.length === 'number' ? g.participants.length : 0);
+  const nomDe = new Map(groups.map((g) => [g.id._serialized, g.name]));
   for (const g of groups.sort((a, b) => size(b) - size(a))) {
-    const kind = g.community ? ' [communauté]' : '';
+    const de = g.parent && nomDe.get(g.parent) ? ` « ${nomDe.get(g.parent)} »` : '';
+    const kind = g.community
+      ? ' [communauté]'
+      : g.announcement
+        ? ` [annonces de la communauté${de} : tous ses membres]`
+        : g.parent
+          ? ` [groupe de la communauté${de}]`
+          : '';
     const mark = marked.has(g) ? '   ← groupe configuré' : '';
     console.log(`  - ${g.name}${kind}  (${g.participants.length} membres, id ${g.id._serialized})${mark}`);
   }

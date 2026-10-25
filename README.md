@@ -59,6 +59,20 @@ Scannez le QR code avec le téléphone **admin du groupe** (WhatsApp › Réglag
 
 > **Conseil** : utilisez un numéro dédié au club (une carte SIM à bas prix) nommé admin du groupe, plutôt que votre numéro personnel. Voir « Risques » plus bas.
 
+### Groupes d'une communauté WhatsApp
+
+Retirer quelqu'un d'un groupe ne le retire pas de la communauté, et le retirer de la communauté ne le retire pas des groupes. Il faut donc traiter les deux.
+
+Tous les membres d'une communauté sont dans son **groupe d'annonces**. `npm run wa:connexion` le signale par « [annonces de la communauté …] » ; il porte souvent le même nom que la communauté. Ajoutez son identifiant (`…@g.us`) à la liste des groupes : retirer quelqu'un de ce groupe d'annonces le retire de la communauté.
+
+```json
+"whatsapp": {
+  "groupes": ["Padel Annecy Tennis", "Nom de l'autre groupe", "120363…@g.us"]
+}
+```
+
+À vérifier une première fois sur une seule personne : après son retrait, contrôlez sur votre téléphone qu'elle n'apparaît plus dans les membres de la communauté.
+
 ## Utilisation (environ deux fois par an)
 
 1. Prévenez le groupe quelques semaines avant (« les non-adhérents seront retirés le … »).

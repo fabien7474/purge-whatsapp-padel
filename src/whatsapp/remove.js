@@ -26,7 +26,8 @@ async function main(client) {
 
   const journal = readJournal(PATHS.journalRetraits);
   const recent = recentRemovals(journal);
-  const quota = Math.max(0, Math.min(maxParExecution, maxPar24h - recent.count));
+  // maxPar24h vide (null) : pas de plafond sur 24 h.
+  const quota = maxPar24h ? Math.max(0, Math.min(maxParExecution, maxPar24h - recent.count)) : maxParExecution;
 
   const membres = await readMembers(client, group);
   const plan = planRemoval({
@@ -40,9 +41,10 @@ async function main(client) {
   console.log(`\nGroupe « ${group.name} » : ${membres.length} membres.`);
   console.log(`  ${plan.aRetirer.length} à retirer maintenant`);
   if (plan.reportes.length) {
-    console.log(`  ${plan.reportes.length} reportés (max ${maxParExecution} par exécution, ${maxPar24h} par 24 h ; ${recent.count} déjà retirés ces dernières 24 h)`);
+    const jour = maxPar24h ? `, ${maxPar24h} par 24 h ; ${recent.count} déjà retirés ces dernières 24 h` : '';
+    console.log(`  ${plan.reportes.length} reportés à la prochaine séance (max ${maxParExecution} par séance${jour})`);
   }
-  if (quota === 0 && plan.reportes.length) {
+  if (maxPar24h && quota === 0 && plan.reportes.length) {
     const h = recent.libereA?.toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' });
     console.log(`\n⏸️  Limite de ${maxPar24h} retraits par 24 h atteinte. Prochain retrait possible : ${h}.`);
   }
@@ -108,7 +110,7 @@ async function main(client) {
 
   console.log(`\n✅ ${retires} personne(s) retirée(s). Journal : data/retraits.log`);
   const reste = plan.aRetirer.length - retires + plan.reportes.length;
-  if (reste > 0) console.log(`Il en reste ${reste} : relancez la commande demain.`);
+  if (reste > 0) console.log(`Il en reste ${reste} : relancez la commande pour une nouvelle séance (de préférence quelques heures plus tard).`);
 }
 
 const client = await startWhatsApp({ allowQr: false });

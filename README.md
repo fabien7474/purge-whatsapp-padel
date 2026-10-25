@@ -67,19 +67,19 @@ Scannez le QR code avec le téléphone **admin du groupe** (WhatsApp › Réglag
 5. Ouvrez `data/rapports/rapport-AAAA-MM-JJ.html` dans votre navigateur. Traitez les **À vérifier** : ajoutez à `data/a-retirer.txt` ceux à retirer, ou à `liste-blanche.txt` ceux à garder.
 6. Relisez `data/a-retirer.txt` et supprimez toute ligne de quelqu'un qui doit rester.
 7. `npm run wa:retirer` (simulation), puis `npm run wa:retirer -- --appliquer`.
-8. Une séance dure environ 20 minutes et retire au plus 12 personnes ; au plus 15 par 24 h, même si vous relancez la commande. Relancez-la chaque jour : elle reprend où elle s'était arrêtée (journal `data/retraits.log`). Comptez une semaine environ pour 100 personnes.
+8. Une **séance** = une exécution de `npm run wa:retirer -- --appliquer`. Elle retire au plus 40 personnes, une par une, en 50 minutes environ. S'il en reste, relancez la commande pour une nouvelle séance : elle reprend où elle s'était arrêtée (journal `data/retraits.log`). Laissez de préférence quelques heures entre deux séances (par exemple une le matin, une le soir).
 9. Une fois terminé : `npm run nettoyer` pour supprimer l'export, les listes et les rapports. Pensez aussi à supprimer le fichier `export.xls` de votre dossier Téléchargements.
 
 ### Rythme de retrait
 
-Volontairement lent pour ne pas attirer l'attention de WhatsApp. Réglages dans `config.json` › `retrait` :
+Assez lent pour ne pas attirer l'attention de WhatsApp. Réglages dans `config.json` › `retrait` :
 
 | Réglage | Valeur | Rôle |
 |---|---|---|
 | `parLot` | 1 | personnes retirées à la fois |
-| `pauseMinSecondes` / `pauseMaxSecondes` | 60 / 150 | pause aléatoire entre deux retraits |
-| `maxParExecution` | 12 | retraits par séance (≈ 20 min) |
-| `maxPar24h` | 15 | retraits sur 24 heures glissantes, toutes séances confondues |
+| `pauseMinSecondes` / `pauseMaxSecondes` | 45 / 110 | pause aléatoire entre deux retraits |
+| `maxParExecution` | 40 | retraits par séance (≈ 50 min) |
+| `maxPar24h` | `null` | plafond facultatif sur 24 heures glissantes, toutes séances confondues (`null` = pas de plafond) |
 
 Si un retrait n'aboutit pas, la séance s'arrête aussitôt : vérifiez le groupe sur votre téléphone et attendez le lendemain.
 

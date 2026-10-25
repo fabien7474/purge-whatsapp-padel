@@ -2,6 +2,10 @@ node_modules/
 
 # Données personnelles des adhérents et des membres du groupe : ne jamais les committer
 data/
+import/
+*.xls
+*.xlsx
+*.csv
 
 # Session de connexion WhatsApp
 .wwebjs_auth/

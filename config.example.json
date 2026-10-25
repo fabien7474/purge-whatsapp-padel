@@ -13,9 +13,10 @@
     ]
   },
   "retrait": {
-    "parLot": 1,
     "pauseMinSecondes": 45,
     "pauseMaxSecondes": 110,
+    "pauseEntreGroupesMinSecondes": 5,
+    "pauseEntreGroupesMaxSecondes": 20,
     "maxParExecution": 40,
     "maxPar24h": null
   }

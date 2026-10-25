@@ -7,7 +7,10 @@ import { configuredGroups, mergeMembers } from './groups.js';
 
 const config = loadConfig();
 const appliquer = process.argv.includes('--appliquer');
-const { parLot, pauseMinSecondes, pauseMaxSecondes, maxParExecution, maxPar24h } = config.retrait;
+const { pauseMinSecondes, pauseMaxSecondes, maxParExecution, maxPar24h } = config.retrait;
+// Pause entre les retraits d'une même personne de ses différents groupes.
+const pauseGroupeMin = config.retrait.pauseEntreGroupesMinSecondes ?? 5;
+const pauseGroupeMax = config.retrait.pauseEntreGroupesMaxSecondes ?? 20;
 
 const lignes = readNumberList(PATHS.aRetirer);
 if (!lignes.length) {
@@ -17,7 +20,7 @@ if (!lignes.length) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const pause = () => 1000 * (pauseMinSecondes + Math.random() * (pauseMaxSecondes - pauseMinSecondes));
+const alea = (min, max) => 1000 * (min + Math.random() * (max - min));
 
 async function main(client) {
   // Chargement des groupes configurés ; il faut être admin de chacun.
@@ -65,11 +68,11 @@ async function main(client) {
 
   if (!plan.aRetirer.length) return;
 
-  const operations = plan.aRetirer.reduce((n, r) => n + r.groupes.length, 0);
-  const minutes = Math.round((operations * ((pauseMinSecondes + pauseMaxSecondes) / 2 + 5)) / parLot / 60);
-  const rythme = parLot === 1 ? 'Un retrait à la fois' : `Par lots de ${parLot}`;
-  const detailOps = operations > plan.aRetirer.length ? ` (${operations} retraits au total, certains étant dans plusieurs groupes)` : '';
-  console.log(`\n${rythme}, avec ${pauseMinSecondes} à ${pauseMaxSecondes} s de pause : environ ${minutes} min${detailOps}.`);
+  const extra = plan.aRetirer.reduce((n, r) => n + r.groupes.length - 1, 0); // retraits d'un 2e groupe ou plus
+  const secondes =
+    plan.aRetirer.length * ((pauseMinSecondes + pauseMaxSecondes) / 2 + 5) + extra * ((pauseGroupeMin + pauseGroupeMax) / 2 + 5);
+  console.log(`\nUne personne à la fois, avec ${pauseMinSecondes} à ${pauseMaxSecondes} s de pause : environ ${Math.round(secondes / 60)} min.`);
+  if (extra) console.log(`(${extra} personne(s) dans plusieurs groupes : ${pauseGroupeMin} à ${pauseGroupeMax} s entre chacun de leurs groupes.)`);
 
   const ou = (r) => (plusieurs ? `  [${r.groupes.map((g) => g.nom).join(', ')}]` : '');
   if (!appliquer) {
@@ -89,51 +92,46 @@ async function main(client) {
     return;
   }
 
-  // Une opération = retirer une personne d'un groupe. Les pauses s'appliquent entre chaque lot d'opérations.
-  const ops = plan.aRetirer.flatMap((r) => r.groupes.map((g) => ({ r, groupeId: g.groupeId ?? [...groups.keys()][0], id: g.id })));
-  const restants = new Map(plan.aRetirer.map((r) => [r.numero, r.groupes.length]));
   let retires = 0;
   let echec = false;
 
-  for (let i = 0; i < ops.length && !echec; i += parLot) {
-    const lot = ops.slice(i, i + parLot);
-    const parGroupe = new Map();
-    for (const op of lot) parGroupe.set(op.groupeId, [...(parGroupe.get(op.groupeId) ?? []), op]);
+  for (const [n, r] of plan.aRetirer.entries()) {
+    // On retire la personne de chacun de ses groupes, avec une courte pause entre deux groupes.
+    for (const [k, gr] of r.groupes.entries()) {
+      const groupeId = gr.groupeId ?? [...groups.keys()][0];
+      await groups.get(groupeId).removeParticipants([gr.id]);
+      await sleep(5000);
 
-    for (const [groupeId, lotGroupe] of parGroupe) {
-      await groups.get(groupeId).removeParticipants(lotGroupe.map((op) => op.id));
-    }
-    await sleep(5000);
-
-    // Vérification : on relit chaque groupe concerné et on contrôle que chacun est bien parti.
-    for (const [groupeId, lotGroupe] of parGroupe) {
+      // Vérification : on relit le groupe et on contrôle que la personne est bien partie.
       const g = await findGroup(client, groupeId);
       groups.set(groupeId, g);
-      const encore = new Set(g.participants.map((p) => p.id._serialized));
-      for (const op of lotGroupe) {
-        const label = `${formatKey(op.r.numero)}${plusieurs ? ` de « ${g.name} »` : ''}`;
-        if (encore.has(op.id)) {
-          appendJournal(PATHS.journalRetraits, op.r.numero, 'echec', `${op.r.nom} [${g.name}]`);
-          console.log(`  ❌ ${label} : toujours présent`);
-          echec = true;
-          continue;
-        }
-        console.log(`  ✅ ${label} retiré`);
-        const reste = restants.get(op.r.numero) - 1;
-        restants.set(op.r.numero, reste);
-        if (reste === 0) {
-          // Journalisé une fois la personne retirée de tous ses groupes.
-          appendJournal(PATHS.journalRetraits, op.r.numero, 'retire', `${op.r.nom}${ou(op.r)}`);
-          retires += 1;
-        }
+      const label = `${formatKey(r.numero)}${plusieurs ? ` de « ${g.name} »` : ''}`;
+      if (g.participants.some((p) => p.id._serialized === gr.id)) {
+        appendJournal(PATHS.journalRetraits, r.numero, 'echec', `${r.nom} [${g.name}]`);
+        console.log(`  ❌ ${label} : toujours présent`);
+        echec = true;
+        break;
+      }
+      console.log(`  ✅ ${label} retiré`);
+
+      if (k < r.groupes.length - 1) {
+        const ms = alea(pauseGroupeMin, pauseGroupeMax);
+        console.log(`     … ${Math.round(ms / 1000)} s avant le groupe suivant`);
+        await sleep(ms);
       }
     }
 
     if (echec) {
       // Un retrait refusé peut signaler une restriction de WhatsApp : on n'insiste pas.
       console.log('\n⛔ Un retrait n\'a pas abouti : arrêt par prudence. Vérifiez le groupe sur votre téléphone avant de relancer, idéalement le lendemain.');
-    } else if (i + parLot < ops.length) {
-      const ms = pause();
+      break;
+    }
+    // Journalisé une fois la personne retirée de tous ses groupes.
+    appendJournal(PATHS.journalRetraits, r.numero, 'retire', `${r.nom}${ou(r)}`);
+    retires += 1;
+
+    if (n < plan.aRetirer.length - 1) {
+      const ms = alea(pauseMinSecondes, pauseMaxSecondes);
       console.log(`  … pause de ${Math.round(ms / 1000)} s`);
       await sleep(ms);
     }

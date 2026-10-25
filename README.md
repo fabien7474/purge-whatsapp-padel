@@ -14,7 +14,7 @@ Rien n'est retiré automatiquement : le bot prépare une liste, vous la relisez,
 | 3 | `npm run wa:membres` | Se connecte à WhatsApp Web avec le téléphone admin et lit la liste des membres du ou des groupes. |
 | 4 | `npm run rapport` | Rapproche les deux listes et produit le rapport et `data/a-retirer.txt`. |
 | 5 | `npm run wa:retirer` | Simulation : montre ce qui serait fait, sans rien toucher. |
-| 6 | `npm run wa:retirer -- --appliquer` | Retire pour de vrai, une personne à la fois et lentement, après avoir tapé `RETIRER`. |
+| 6 | `npm run wa:retirer -- --appliquer` | Retire pour de vrai, une personne à la fois et lentement (de tous ses groupes), après avoir tapé `RETIRER`. |
 
 `npm run preparer` enchaîne les étapes 3 et 4.
 
@@ -82,8 +82,8 @@ Assez lent pour ne pas attirer l'attention de WhatsApp. Réglages dans `config.j
 
 | Réglage | Valeur | Rôle |
 |---|---|---|
-| `parLot` | 1 | personnes retirées à la fois |
-| `pauseMinSecondes` / `pauseMaxSecondes` | 45 / 110 | pause aléatoire entre deux retraits |
+| `pauseMinSecondes` / `pauseMaxSecondes` | 45 / 110 | pause aléatoire entre deux personnes |
+| `pauseEntreGroupesMinSecondes` / `pauseEntreGroupesMaxSecondes` | 5 / 20 | pause aléatoire entre les groupes d'une même personne |
 | `maxParExecution` | 40 | retraits par séance (≈ 50 min) |
 | `maxPar24h` | `null` | plafond facultatif sur 24 heures glissantes, toutes séances confondues (`null` = pas de plafond) |
 

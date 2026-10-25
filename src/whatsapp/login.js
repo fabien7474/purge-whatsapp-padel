@@ -1,8 +1,9 @@
 import { loadConfig } from '../lib/config.js';
-import { findGroup, listGroups, matchGroups, startWhatsApp, closeWhatsApp } from './client.js';
+import { closeWhatsApp, findGroup, isMeAdmin, listGroups, matchGroups, startWhatsApp } from './client.js';
+import { configuredGroups } from './groups.js';
 
 const config = loadConfig();
-const wanted = config.whatsapp.groupe;
+const wanted = configuredGroups(config.whatsapp);
 
 console.log('Connexion à WhatsApp…');
 const client = await startWhatsApp({ allowQr: true });
@@ -11,26 +12,31 @@ try {
 
   const groups = await listGroups(client);
   const candidates = groups.filter((g) => !g.community);
-  const found = /@g\.us$/.test(wanted)
-    ? candidates.filter((g) => g.id._serialized === wanted)
-    : matchGroups(candidates, wanted);
+  const found = new Map(
+    wanted.map((w) => [w, /@g\.us$/.test(w) ? candidates.filter((g) => g.id._serialized === w) : matchGroups(candidates, w)]),
+  );
+  const marked = new Set([...found.values()].filter((f) => f.length === 1).flat());
 
   console.log(`\nGroupes visibles (${groups.length}) :`);
   const size = (g) => (typeof g.participants.length === 'number' ? g.participants.length : 0);
   for (const g of groups.sort((a, b) => size(b) - size(a))) {
     const kind = g.community ? ' [communauté]' : '';
-    const mark = found.includes(g) ? '   ← groupe configuré' : '';
+    const mark = marked.has(g) ? '   ← groupe configuré' : '';
     console.log(`  - ${g.name}${kind}  (${g.participants.length} membres, id ${g.id._serialized})${mark}`);
   }
 
-  if (found.length === 1) {
-    // Vérifie que le groupe se charge complètement, membres compris.
-    const group = await findGroup(client, found[0].id._serialized);
-    console.log(`\n✅ Groupe trouvé : « ${group.name} » (${group.participants.length} membres).`);
-  } else if (found.length > 1) {
-    console.log(`\n⚠️  Plusieurs groupes correspondent à « ${wanted} ». Mettez l'identifiant (…@g.us) du bon groupe dans config.json › whatsapp.groupe.`);
-  } else {
-    console.log(`\n⚠️  Aucun groupe ne correspond à « ${wanted} ». Copiez le nom exact (ou l'identifiant …@g.us) depuis la liste ci-dessus dans config.json › whatsapp.groupe.`);
+  console.log('');
+  for (const [w, f] of found) {
+    if (f.length === 1) {
+      // Vérifie que le groupe se charge complètement, membres compris, et que le compte en est admin.
+      const group = await findGroup(client, f[0].id._serialized);
+      const admin = (await isMeAdmin(client, group)) ? '' : '  ⚠️  ce compte n\'en est pas admin : le retrait sera impossible';
+      console.log(`✅ Groupe trouvé : « ${group.name} » (${group.participants.length} membres)${admin}`);
+    } else if (f.length > 1) {
+      console.log(`⚠️  Plusieurs groupes correspondent à « ${w} » : mettez l'identifiant (…@g.us) du bon groupe dans config.json.`);
+    } else {
+      console.log(`⚠️  Aucun groupe ne correspond à « ${w} » : copiez le nom exact (ou l'identifiant …@g.us) depuis la liste ci-dessus dans config.json.`);
+    }
   }
 } finally {
   await closeWhatsApp(client);

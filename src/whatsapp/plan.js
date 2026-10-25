@@ -48,9 +48,17 @@ export function planRemoval({ lignes, membres, journal = [], listeBlanche = [], 
     if (dejaFaits.has(numero) && !m) plan.dejaFaits.push(numero);
     else if (!m) plan.dejaPartis.push(numero);
     else if (m.moi) plan.proteges.push({ numero, raison: 'compte connecté' });
-    else if (m.admin) plan.proteges.push({ numero, raison: 'admin du groupe' });
+    else if (m.admin) plan.proteges.push({ numero, raison: 'admin du groupe' }); // admin d'au moins un des groupes
     else if (blanche.has(numero)) plan.proteges.push({ numero, raison: 'liste blanche' });
-    else eligibles.push({ numero, id: m.id, nom: m.nom, contact: Boolean(m.contact) });
+    else {
+      eligibles.push({
+        numero,
+        id: m.id,
+        nom: m.nom,
+        contact: Boolean(m.contact),
+        groupes: m.groupes ?? [{ nom: null, groupeId: null, id: m.id }],
+      });
+    }
   }
 
   // Inconnus d'abord, contacts du téléphone en dernier (tri stable : l'ordre de la liste est conservé).

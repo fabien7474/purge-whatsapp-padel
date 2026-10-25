@@ -5,14 +5,14 @@ const esc = (v) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 /** Rapport autonome (aucune ressource externe), à ouvrir dans le navigateur. */
-export function renderHtml({ lignes, totaux, groupe, dateAdoc, dateWa, nbAdherents }) {
+export function renderHtml({ lignes, totaux, titre, plusieurs, dateAdoc, dateWa, nbAdherents }) {
   const chips = Object.entries(STATUTS)
     .map(([k, label]) => `<button class="chip ${k}" data-f="${k}">${esc(label)} <b>${totaux[k]}</b></button>`)
     .join('');
   const rows = lignes
     .map(
       (l) => `<tr class="${l.statut}"><td><span class="tag ${l.statut}">${esc(STATUTS[l.statut])}</span></td>
-<td class="num">${esc(formatKey(l.numero))}</td><td>${esc(l.nomWhatsApp)}${l.admin ? ' <small>admin</small>' : ''}${l.contact ? ' <small>contact</small>' : ''}</td>
+<td class="num">${esc(formatKey(l.numero))}</td><td>${esc(l.nomWhatsApp)}${l.admin ? ' <small>admin</small>' : ''}${l.contact ? ' <small>contact</small>' : ''}${plusieurs ? `<br><small>${esc(l.groupes.join(', '))}</small>` : ''}</td>
 <td>${esc(l.adherent)}</td><td class="why">${esc(l.raison)}</td></tr>`,
     )
     .join('\n');
@@ -36,8 +36,8 @@ td.num{white-space:nowrap;font-variant-numeric:tabular-nums}td.why{color:var(--m
 .tag{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;border:1px solid currentColor}
 .tag.ok{color:var(--ok)}.tag.conserve{color:var(--keep)}.tag.a_verifier{color:var(--check)}.tag.a_retirer{color:var(--out)}
 </style></head><body><main>
-<h1>Groupe « ${esc(groupe)} »</h1>
-<p class="meta">${lignes.length} membres WhatsApp (lus le ${esc(dateWa)}) comparés à ${nbAdherents} adhérents Adoc (export du ${esc(dateAdoc)}).</p>
+<h1>${plusieurs ? 'Groupes' : 'Groupe'} ${esc(titre)}</h1>
+<p class="meta">${lignes.length} personnes (lus le ${esc(dateWa)}) comparés à ${nbAdherents} adhérents Adoc (export du ${esc(dateAdoc)}).</p>
 <div class="chips">${chips}</div>
 <input id="q" type="search" placeholder="Rechercher un nom ou un numéro…">
 <div class="wrap"><table><thead><tr><th>Statut</th><th>Numéro</th><th>Nom WhatsApp</th><th>Adhérent Adoc</th><th>Raison</th></tr></thead>

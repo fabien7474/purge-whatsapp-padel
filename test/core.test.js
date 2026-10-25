@@ -155,3 +155,30 @@ test('plan de retrait : les contacts du téléphone passent en dernier', () => {
   assert.deepEqual(plan.aRetirer.map((r) => r.id), ['u1', 'u2', 'k1']);
   assert.deepEqual(plan.reportes, ['33600000013']);
 });
+
+test('plusieurs groupes : une entrée par personne, retirée de chacun de ses groupes', async () => {
+  const { configuredGroups, mergeMembers } = await import('../src/whatsapp/groups.js');
+  assert.deepEqual(configuredGroups({ groupe: 'A' }), ['A']);
+  assert.deepEqual(configuredGroups({ groupes: ['A', 'B', ''] }), ['A', 'B']);
+
+  const groupes = [
+    { nom: 'Padel', id: 'p@g.us', membres: [
+      { id: '33600000021@c.us', numero: '33600000021', nom: 'Paul', admin: false, moi: false, contact: false },
+      { id: '33600000022@c.us', numero: '33600000022', nom: '', admin: false, moi: false, contact: false },
+    ] },
+    { nom: 'Annonces', id: 'a@g.us', membres: [
+      { id: '33600000021@c.us', numero: '33600000021', nom: '', admin: false, moi: false, contact: true },
+      { id: '33600000022@c.us', numero: '33600000022', nom: 'Zoé', admin: true, moi: false, contact: false },
+    ] },
+  ];
+  const merged = mergeMembers(groupes);
+  assert.equal(merged.length, 2);
+  const paul = merged.find((m) => m.numero === '33600000021');
+  assert.equal(paul.nom, 'Paul');
+  assert.equal(paul.contact, true);
+  assert.deepEqual(paul.groupes.map((g) => g.groupeId), ['p@g.us', 'a@g.us']);
+
+  const plan = planRemoval({ lignes: ['0600000021', '0600000022'], membres: merged });
+  assert.deepEqual(plan.aRetirer.map((r) => r.groupes.length), [2]);
+  assert.deepEqual(plan.proteges.map((p) => p.raison), ['admin du groupe'], 'admin d\'un des groupes : protégé partout');
+});

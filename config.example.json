@@ -7,7 +7,10 @@
     }
   },
   "whatsapp": {
-    "groupe": "Padel Annecy Tennis"
+    "groupes": [
+      "Padel Annecy Tennis",
+      "Nom de l'autre groupe"
+    ]
   },
   "retrait": {
     "parLot": 1,

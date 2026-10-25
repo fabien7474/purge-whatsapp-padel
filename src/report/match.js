@@ -29,7 +29,13 @@ export function matchMembers({ adherents, membres, listeBlanche = [] }) {
   const label = (a) => `${a.prenom} ${a.nom}`.trim();
 
   return membres.map((m) => {
-    const base = { numero: m.numero, nomWhatsApp: m.nom, admin: m.admin, contact: Boolean(m.contact) };
+    const base = {
+      numero: m.numero,
+      nomWhatsApp: m.nom,
+      admin: m.admin,
+      contact: Boolean(m.contact),
+      groupes: (m.groupes ?? []).map((g) => g.nom),
+    };
 
     if (m.moi) return { ...base, statut: 'conserve', raison: 'Compte utilisé par le bot' };
     if (m.numero && blanche.has(m.numero)) return { ...base, statut: 'conserve', raison: 'Liste blanche' };

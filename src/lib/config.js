@@ -50,7 +50,11 @@ function merge(base, extra) {
 
 export function loadConfig() {
   if (!fs.existsSync(PATHS.config)) return DEFAULTS;
-  return merge(DEFAULTS, JSON.parse(fs.readFileSync(PATHS.config, 'utf8')));
+  const user = JSON.parse(fs.readFileSync(PATHS.config, 'utf8'));
+  const config = merge(DEFAULTS, user);
+  // Les groupes de l'exemple ne doivent jamais s'ajouter à ceux de votre config.json.
+  if (user.whatsapp) config.whatsapp = user.whatsapp;
+  return config;
 }
 
 export function ensureDir(dir) {

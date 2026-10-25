@@ -11,7 +11,7 @@ Rien n'est retiré automatiquement : le bot prépare une liste, vous la relisez,
 |---|---|---|
 | 1 | *(à la main dans Adoc)* | Vous exportez la liste des adhérents en cours (fichier Excel). |
 | 2 | `npm run adoc:importer -- <fichier>` | Lit l'export, repère les colonnes de téléphone et normalise les numéros. |
-| 3 | `npm run wa:membres` | Se connecte à WhatsApp Web avec le téléphone admin et lit la liste des membres du groupe. |
+| 3 | `npm run wa:membres` | Se connecte à WhatsApp Web avec le téléphone admin et lit la liste des membres du ou des groupes. |
 | 4 | `npm run rapport` | Rapproche les deux listes et produit le rapport et `data/a-retirer.txt`. |
 | 5 | `npm run wa:retirer` | Simulation : montre ce qui serait fait, sans rien toucher. |
 | 6 | `npm run wa:retirer -- --appliquer` | Retire pour de vrai, une personne à la fois et lentement, après avoir tapé `RETIRER`. |
@@ -41,7 +41,13 @@ cp liste-blanche.example.txt liste-blanche.txt
 
 Sous Windows, remplacez `cp` par `copy`.
 
-Dans `config.json`, mettez le **nom exact** du groupe dans `whatsapp.groupe`.
+Dans `config.json`, indiquez le ou les groupes à purger dans `whatsapp.groupes` (le nom, ou l'identifiant `…@g.us` affiché par `npm run wa:connexion`) :
+
+```json
+"whatsapp": { "groupes": ["Padel Annecy Tennis", "Padel Annecy Tennis - Annonces"] }
+```
+
+Avec plusieurs groupes, les membres sont comparés à la même liste d'adhérents, le rapport et `data/a-retirer.txt` sont communs, et chaque personne est retirée de tous les groupes configurés où elle se trouve. Le compte lié doit être admin de chacun.
 
 ### Connexion à WhatsApp
 
@@ -49,7 +55,7 @@ Dans `config.json`, mettez le **nom exact** du groupe dans `whatsapp.groupe`.
 npm run wa:connexion
 ```
 
-Scannez le QR code avec le téléphone **admin du groupe** (WhatsApp › Réglages › Appareils connectés). La commande affiche ensuite vos groupes et indique si celui de `config.json` est bien trouvé. La session est gardée dans `.wwebjs_auth/` : il n'est pas nécessaire de rescanner à chaque fois.
+Scannez le QR code avec le téléphone **admin du groupe** (WhatsApp › Réglages › Appareils connectés). La commande affiche ensuite vos groupes, indique si ceux de `config.json` sont bien trouvés, et si le compte en est admin. La session est gardée dans `.wwebjs_auth/` : il n'est pas nécessaire de rescanner à chaque fois.
 
 > **Conseil** : utilisez un numéro dédié au club (une carte SIM à bas prix) nommé admin du groupe, plutôt que votre numéro personnel. Voir « Risques » plus bas.
 

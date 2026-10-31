@@ -5,22 +5,29 @@ import { parseAdocExport } from './parse.js';
 
 // Lit l'export Excel des adhérents fait à la main dans Adoc.
 // Usage : npm run adoc:importer -- chemin/vers/export.xls
-//         (sans chemin : le fichier .xls/.xlsx le plus récent du dossier data/adoc/)
+//         (sans chemin : le fichier .xls/.xlsx le plus récent des dossiers import/ et data/adoc/)
 
 const config = loadConfig();
 let source = process.argv[2];
 
 if (!source) {
   ensureDir(PATHS.adocDir);
-  const candidates = fs
-    .readdirSync(PATHS.adocDir)
-    .filter((f) => /\.xlsx?$/i.test(f) && !f.startsWith('adherents-'))
-    .map((f) => path.join(PATHS.adocDir, f))
+  const importDir = path.join(ROOT, 'import');
+  const candidates = [importDir, PATHS.adocDir]
+    .filter((d) => fs.existsSync(d))
+    .flatMap((d) =>
+      fs
+        .readdirSync(d)
+        .filter((f) => /\.xlsx?$/i.test(f) && !f.startsWith('adherents-'))
+        .map((f) => path.join(d, f)),
+    )
+    // Seuls les vrais fichiers Excel (l'export « suivi des inscriptions » est un texte nommé .xls).
+    .filter((f) => ['d0cf11e0', '504b0304'].includes(fs.readFileSync(f).subarray(0, 4).toString('hex')))
     .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
   source = candidates[0];
   if (!source) {
     throw new Error(
-      'Aucun export trouvé.\n→ Indiquez le fichier : npm run adoc:importer -- ~/Téléchargements/export.xls\n  ou déposez-le dans le dossier data/adoc/.',
+      'Aucun export trouvé.\n→ Déposez l\'export Adoc dans le dossier import/, ou indiquez le fichier :\n  npm run adoc:importer -- chemin/vers/export.xls',
     );
   }
 }

@@ -105,6 +105,40 @@ Les personnes enregistrées dans les **contacts du téléphone lié au bot** son
 
 Si un retrait n'aboutit pas, la séance s'arrête aussitôt : vérifiez le groupe sur votre téléphone et attendez le lendemain.
 
+## Sur le Beelink (Linux + Docker)
+
+Tout tourne dans un conteneur Docker : rien à installer à part Docker et Git. Les données restent dans le dossier du projet.
+
+### Installation (une seule fois)
+
+```bash
+sudo apt install -y docker.io docker-compose-v2 git
+sudo usermod -aG docker $USER      # puis se déconnecter / reconnecter
+git clone https://github.com/fabien7474/purge-whatsapp-padel.git
+cd purge-whatsapp-padel
+docker compose build
+```
+
+Recopiez depuis l'ancien ordinateur, dans le même dossier : `config.json`, `liste-blanche.txt` et `data/retraits.log` (le journal, pour que les personnes déjà retirées ne soient pas retraitées).
+
+### Utilisation
+
+Le raccourci `./purge` remplace `npm run` :
+
+| Sur le PC | Sur le Beelink |
+|---|---|
+| `npm run wa:connexion` | `./purge wa:connexion` |
+| `npm run adoc:importer -- fichier.xls` | déposer l'export dans `import/`, puis `./purge adoc:importer` |
+| `npm run preparer` | `./purge preparer` |
+| `npm run wa:retirer -- --appliquer` | `./purge wa:retirer -- --appliquer` |
+| `npm run nettoyer` | `./purge nettoyer` |
+
+La session WhatsApp ne se copie pas : la première fois, `./purge wa:connexion` affiche un QR code à scanner avec le téléphone admin. Retirez ensuite l'ancien ordinateur dans WhatsApp › Appareils connectés.
+
+Après une mise à jour du code : `git pull && docker compose build`.
+
+Le rapport HTML est dans `data/rapports/` : ouvrez-le avec le navigateur du Beelink.
+
 ## Risques et précautions
 
 - **WhatsApp** : il n'existe pas d'API officielle pour gérer un groupe de cette taille. Le bot passe par WhatsApp Web (bibliothèque [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js)), ce que les conditions de WhatsApp n'autorisent pas. Le risque est une suspension du numéro utilisé, surtout en cas de retraits massifs. D'où les précautions : numéro dédié, une personne à la fois, pauses aléatoires, plafond quotidien, arrêt au premier échec. La simple lecture des membres est peu risquée.

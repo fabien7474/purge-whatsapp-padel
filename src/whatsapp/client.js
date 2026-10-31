@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import qrcode from 'qrcode-terminal';
 import pkg from 'whatsapp-web.js';
 import { PATHS } from '../lib/config.js';
@@ -9,13 +11,34 @@ export { matchGroups };
 const { Client, LocalAuth } = pkg;
 
 /**
+ * Après un arrêt brutal (coupure, Ctrl+C, conteneur arrêté), Chromium laisse des fichiers de verrou
+ * dans le profil et refuse ensuite de redémarrer (« profile in use »). On les supprime avant de lancer.
+ */
+function removeStaleLocks() {
+  const dir = path.join(PATHS.waAuth, 'session-padel');
+  for (const f of ['SingletonLock', 'SingletonSocket', 'SingletonCookie']) {
+    try {
+      fs.rmSync(path.join(dir, f), { force: true });
+    } catch {
+      /* absent : rien à faire */
+    }
+  }
+}
+
+/**
  * Démarre une session WhatsApp Web liée au téléphone de l'admin (comme un ordinateur
  * de plus dans « Appareils connectés »). La session est gardée dans .wwebjs_auth/.
  */
 export async function startWhatsApp({ allowQr = true } = {}) {
+  removeStaleLocks();
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: PATHS.waAuth, clientId: 'padel' }),
-    puppeteer: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] },
+    puppeteer: {
+      headless: true,
+      // Dans Docker, on utilise le Chromium du système (PUPPETEER_EXECUTABLE_PATH).
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    },
   });
 
   const ready = new Promise((resolve, reject) => {

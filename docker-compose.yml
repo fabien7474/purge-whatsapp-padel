@@ -1,0 +1,17 @@
+# Les données (exports, listes, rapports, session WhatsApp, réglages) restent dans ce dossier
+# sur le Beelink : le conteneur ne garde rien.
+services:
+  purge:
+    build: .
+    image: purge-whatsapp-padel
+    user: "${UID:-1000}:${GID:-1000}"
+    init: true
+    shm_size: 1gb
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./data:/app/data
+      - ./import:/app/import
+      - ./.wwebjs_auth:/app/.wwebjs_auth
+      - ./config.json:/app/config.json
+      - ./liste-blanche.txt:/app/liste-blanche.txt

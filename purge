@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Raccourci pour le Beelink : ./purge <commande> [-- options]
+# Exemples : ./purge wa:connexion   ./purge preparer   ./purge wa:retirer -- --appliquer
+set -euo pipefail
+cd "$(dirname "$0")"
+
+if [ $# -eq 0 ]; then
+  echo "Usage : ./purge <commande>   (adoc:importer, wa:connexion, preparer, wa:retirer, nettoyer, test)"
+  exit 1
+fi
+
+# Fichiers et dossiers montés dans le conteneur : on les crée s'ils manquent
+# (sinon Docker crée des dossiers à la place des fichiers, appartenant à root).
+mkdir -p data import .wwebjs_auth
+[ -f config.json ] || cp config.example.json config.json
+[ -f liste-blanche.txt ] || cp liste-blanche.example.txt liste-blanche.txt
+
+export UID GID="$(id -g)"
+exec docker compose run --rm purge npm run "$@"

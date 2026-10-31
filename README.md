@@ -112,7 +112,9 @@ Tout tourne dans un conteneur Docker : rien à installer à part Docker et Git. 
 ### Installation (une seule fois)
 
 ```bash
-sudo apt install -y docker.io docker-compose-v2 git
+docker --version && docker compose version   # Docker déjà installé ? Sinon :
+# sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin git
+#   (dépôt officiel Docker ; ne pas mélanger avec le paquet docker.io d'Ubuntu, qui entre en conflit)
 sudo usermod -aG docker $USER      # puis se déconnecter / reconnecter
 git clone https://github.com/fabien7474/purge-whatsapp-padel.git
 cd purge-whatsapp-padel
